@@ -56,21 +56,80 @@ class Database {
         $this->stmt->bindValue($param, $value, $type);
     }
     
-    // Sorguyu çalıştırma
-    public function execute() {
-        return $this->stmt->execute();
+    /**
+     * SQL sorgusunu parametreler ile çalıştırır
+     * @param array $params Bağlanacak parametreler
+     * @return bool Sorgu başarıyla çalıştırıldı mı
+     */
+    public function execute($params = []) {
+        try {
+            // Parametre yoksa doğrudan çalıştır
+            if (empty($params)) {
+                return $this->stmt->execute();
+            }
+            
+            // SQL sorgusu içindeki named parametreleri bul
+            $queryString = $this->stmt->queryString;
+            preg_match_all('/:([a-zA-Z0-9_]+)/', $queryString, $matches);
+            $placeholders = $matches[0] ?? [];
+            
+            if (empty($placeholders)) {
+                // SQL sorgusunda hiç placeholder yoksa normal execute
+                return $this->stmt->execute();
+            }
+            
+            // Sadece SQL sorgusunda bulunan parametreleri işle
+            $validParams = [];
+            foreach ($placeholders as $placeholder) {
+                $paramName = ltrim($placeholder, ':');
+                
+                // Parametre iki formatta da gelebilir - ':key' veya 'key'
+                if (isset($params[$paramName])) {
+                    $validParams[$placeholder] = $params[$paramName];
+                } elseif (isset($params[':' . $paramName])) {
+                    $validParams[$placeholder] = $params[':' . $paramName];
+                }
+            }
+            
+            // Debug bilgisi
+            error_log("SQL: " . $queryString);
+            error_log("Placeholders in query: " . implode(', ', $placeholders));
+            error_log("Valid params: " . print_r($validParams, true));
+            
+            // İşlenmiş parametreleri kullanarak sorguyu çalıştır
+            return $this->stmt->execute($validParams);
+        } catch (PDOException $e) {
+            error_log("PDO Execute Error: " . $e->getMessage());
+            error_log("SQL Query: " . $this->stmt->queryString);
+            error_log("Parameters: " . print_r($params, true));
+            throw $e; // Hatayı yine de fırlat
+        }
     }
     
-    // Tüm kayıtları getirme
-    public function resultSet() {
-        $this->execute();
-        return $this->stmt->fetchAll();
+    // Tüm kayıtları getirme - parametre geçişi eklendi
+    public function resultSet($params = []) {
+        try {
+            // Parametreleri execute metoduna geçir
+            $this->execute($params);
+            return $this->stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("ResultSet hatası: " . $e->getMessage());
+            error_log("SQL: " . $this->stmt->queryString);
+            throw $e; // Hatayı yukarı fırlat
+        }
     }
     
-    // Tek kayıt getirme
-    public function single() {
-        $this->execute();
-        return $this->stmt->fetch();
+    // Tek kayıt getirme - parametre geçişi eklendi
+    public function single($params = []) {
+        try {
+            // Parametreleri execute metoduna geçir
+            $this->execute($params);
+            return $this->stmt->fetch();
+        } catch (PDOException $e) {
+            error_log("Single hatası: " . $e->getMessage());
+            error_log("SQL: " . $this->stmt->queryString);
+            throw $e; // Hatayı yukarı fırlat
+        }
     }
     
     // Etkilenen satır sayısını getirme

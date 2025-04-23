@@ -112,18 +112,39 @@ class Product {
     }
     
     // Ürün arama
-    public function searchProducts($keyword) {
-        $this->db->query('
-            SELECT u.*, k.kategori_adi 
-            FROM urunler u
-            LEFT JOIN kategoriler k ON u.kategori_id = k.id
-            WHERE u.urun_kodu LIKE :keyword OR u.urun_adi LIKE :keyword OR k.kategori_adi LIKE :keyword
-            ORDER BY u.eklenme_tarihi DESC
-        ');
-        
-        $this->db->bind(':keyword', '%' . $keyword . '%');
-        
-        return $this->db->resultSet();
+    public function searchProducts($keyword)
+    {
+        try {
+            // SQL için güvenli hale getir
+            $searchTerm = '%' . trim($keyword) . '%';
+            
+            // Debug log
+            error_log("Arama sorgusu başlatılıyor: '$keyword'");
+            
+            // SQL sorgusunu hazırla - LEFT JOIN kullanarak kategori bilgisini al
+            $sql = "SELECT u.*, k.kategori_adi 
+                    FROM urunler u 
+                    LEFT JOIN kategoriler k ON u.kategori_id = k.id 
+                    WHERE u.urun_kodu LIKE ? 
+                    OR u.urun_adi LIKE ? 
+                    OR k.kategori_adi LIKE ?
+                    ORDER BY u.urun_adi";
+            
+            // DB sınıfı ile sorgumuzu hazırlayalım
+            $this->db->query($sql);
+            
+            // Parametreleri manuel olarak bind edelim (isimsiz parametre kullanarak)
+            $this->db->bind(1, $searchTerm);
+            $this->db->bind(2, $searchTerm);
+            $this->db->bind(3, $searchTerm);
+            
+            // Sorguyu çalıştır ve sonuçları al
+            return $this->db->resultSet();
+        } catch (PDOException $e) {
+            error_log("Ürün arama hatası: " . $e->getMessage());
+            // Hata durumunda boş array döndür
+            return [];
+        }
     }
     
     // Kategorileri getir

@@ -14,10 +14,37 @@ $product = new Product();
 
 // Arama işlemi
 $searchKeyword = isset($_GET['search']) ? trim($_GET['search']) : '';
-if(!empty($searchKeyword)) {
-    $products = $product->searchProducts($searchKeyword);
-} else {
-    $products = $product->getAllProducts();
+$products = [];
+
+try {
+    if(!empty($searchKeyword)) {
+        // Arama terimini güvenli hale getir
+        $searchKeyword = htmlspecialchars($searchKeyword);
+        
+        // Debug bilgisi ekle
+        error_log("Arama yapılıyor: " . $searchKeyword);
+        
+        // searchProducts fonksiyonunu try-catch bloğu içinde çağır
+        try {
+            $products = $product->searchProducts($searchKeyword);
+        } catch (Exception $e) {
+            // Hata durumunda hata mesajını logla
+            error_log("Arama hatası: " . $e->getMessage());
+            
+            // Geriye dönük uyumluluk için tüm ürünleri getir
+            $products = $product->getAllProducts();
+            
+            // Kullanıcıya bir hata mesajı göster
+            $_SESSION['error_message'] = "Arama sırasında bir hata oluştu. Tüm ürünler görüntüleniyor.";
+        }
+    } else {
+        $products = $product->getAllProducts();
+    }
+} catch (Exception $e) {
+    // Genel hata durumunda boş array kullan ve hata mesajını logla
+    $products = [];
+    error_log("Ürünleri getirme hatası: " . $e->getMessage());
+    $_SESSION['error_message'] = "Ürünler yüklenirken bir hata oluştu.";
 }
 
 include 'includes/header.php';
@@ -30,6 +57,18 @@ include 'includes/header.php';
             <i class="fas fa-plus-circle me-1"></i> Yeni Ürün Ekle
         </a>
     </div>
+    
+    <!-- Hata mesajı gösterimi -->
+    <?php if(isset($_SESSION['error_message'])): ?>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i> <?= $_SESSION['error_message'] ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+    </div>
+    <?php 
+        // Mesajı gösterdikten sonra session'dan kaldır
+        unset($_SESSION['error_message']);
+    endif; 
+    ?>
     
     <!-- Arama Formu -->
     <div class="card border-0 shadow-sm mb-4">
@@ -52,7 +91,7 @@ include 'includes/header.php';
     <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-hover datatable mb-0">
+                <table class="table table-hover mb-0" id="productsTable">
                     <thead>
                         <tr>
                             <th>Ürün Kodu</th>
@@ -81,13 +120,13 @@ include 'includes/header.php';
                                     </td>
                                     <td><?= htmlspecialchars($item['birim']) ?></td>
                                     <td>
-                                        <a href="edit_product.php?id=<?= $item['id'] ?>" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Düzenle">
+                                        <a href="edit_product.php?id=<?= $item['id'] ?>" class="btn btn-sm btn-info" title="Düzenle">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a href="product_detail.php?id=<?= $item['id'] ?>" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Detay">
+                                        <a href="product_detail.php?id=<?= $item['id'] ?>" class="btn btn-sm btn-primary" title="Detay">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="stock_movement.php?id=<?= $item['id'] ?>" class="btn btn-sm btn-secondary" data-bs-toggle="tooltip" title="Stok Hareketleri">
+                                        <a href="stock_movement.php?id=<?= $item['id'] ?>" class="btn btn-sm btn-secondary" title="Stok Hareketleri">
                                             <i class="fas fa-history"></i>
                                         </a>
                                     </td>
@@ -114,5 +153,54 @@ include 'includes/header.php';
         </div>
     </div>
 </div>
+
+<script>
+// DataTable özelliklerini ayarla
+document.addEventListener('DOMContentLoaded', function() {
+    // DataTables kütüphanesinin yüklü olduğunu kontrol et
+    if (typeof DataTable !== 'undefined') {
+        // Tabloyu seç
+        const table = document.getElementById('productsTable');
+        
+        // Tablo varsa DataTable'ı başlat
+        if (table) {
+            try {
+                // DataTable'ı başlat
+                const dataTable = new DataTable(table, {
+                    language: {
+                        url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/tr.json',
+                    },
+                    pageLength: 25,
+                    order: [], // Default sıralama kapatıldı
+                    columnDefs: [
+                        { orderable: false, targets: 6 } // İşlemler sütunu için sıralama kapalı
+                    ],
+                    responsive: true,
+                    // Satır sayısına göre paging'i otomatik ayarla
+                    paging: (table.querySelectorAll('tbody tr').length > 25)
+                });
+                
+                console.log('DataTable başarıyla başlatıldı');
+                
+                // Tooltip'leri jQuery olmadan manuel olarak etkinleştir
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+                tooltipTriggerList.forEach(el => {
+                    // Bootstrap 5 API ile tooltip başlat
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                        new bootstrap.Tooltip(el);
+                    }
+                });
+                
+            } catch (error) {
+                console.error('DataTable başlatma hatası:', error);
+            }
+        } else {
+            console.error('Tablo elementi bulunamadı: #productsTable');
+        }
+    } else {
+        console.error('DataTable kütüphanesi yüklenmemiş!');
+    }
+});
+</script>
 
 <?php include 'includes/footer.php'; ?>

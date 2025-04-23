@@ -1,0 +1,20 @@
+# Dizin listesini kapatma
+Options -Indexes
+
+# Varsayılan dosya
+DirectoryIndex index.php
+
+# 404 hata sayfası yönlendirmesi
+ErrorDocument 404 /urun_takip/404.php
+
+# PHP hata gösterimi - geliştirme ortamında açık bırakın
+# php_flag display_errors on
+
+# Basit güvenlik önlemleri
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Doğrudan config klasörüne erişimi engelleme
+    RewriteRule ^config/ - [F,L]
+    # Doğrudan classes klasörüne erişimi engelleme
+    RewriteRule ^classes/ - [F,L]
+</IfModule>

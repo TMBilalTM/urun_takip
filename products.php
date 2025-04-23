@@ -53,9 +53,14 @@ include 'includes/header.php';
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3">Ürünler</h1>
-        <a href="add_product.php" class="btn btn-primary">
-            <i class="fas fa-plus-circle me-1"></i> Yeni Ürün Ekle
-        </a>
+        <div>
+            <a href="kritik_stok_pdf.php" target="_blank" class="btn btn-danger me-2">
+                <i class="fas fa-file-pdf me-1"></i> Kritik Stok PDF
+            </a>
+            <a href="add_product.php" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-1"></i> Yeni Ürün Ekle
+            </a>
+        </div>
     </div>
     
     <!-- Hata mesajı gösterimi -->
